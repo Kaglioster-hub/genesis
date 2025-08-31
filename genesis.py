@@ -3,14 +3,18 @@ from datetime import date
 import feedparser
 
 # ==========================
-# Traduzione automatica
+# Traduzione automatica (robusta)
 # ==========================
+USE_TRANSLATION = True  # metti False per disattivare in blocco
+
 try:
     from deep_translator import GoogleTranslator
+    _gt = GoogleTranslator(source="auto", target="it")
     def traduci_testo(txt, lang="it"):
-        if not txt:
+        if not USE_TRANSLATION or not txt:
             return txt
         try:
+            # istanziazione per target dinamico
             return GoogleTranslator(source="auto", target=lang).translate(txt)
         except Exception:
             return txt
@@ -26,6 +30,7 @@ ARCHIVE_PATH  = "archive.json"
 OUTPUT_INDEX  = "index.html"
 SITEMAP       = "sitemap.xml"
 ROBOTS        = "robots.txt"
+VERCEL_JSON   = "vercel.json"
 SITE_URL      = "https://genesi.vrabo.it"
 
 LANGS = {
@@ -135,6 +140,7 @@ def fetch_latest_news(max_items=6, lang="it"):
     return items
 
 def detect_markers_from_news(news_list, lang="it"):
+    """Marker con titolo+link; geolocalizzati se matchati, altrimenti fallback su [20,0]."""
     markers, seen = [], set()
     for n in news_list:
         text = f"{n.get('raw_title','')} {n.get('raw_summary','')} {n.get('title','')} {n.get('summary','')}".lower()
@@ -147,15 +153,15 @@ def detect_markers_from_news(news_list, lang="it"):
                     seen.add(key)
                     markers.append({
                         "code": "",
-                        "title": f"<b>{n['title']}</b><br/>{luogo}<br/><a href='{n['url']}' target='_blank'>🔗 Fonte</a>",
+                        "title": f"<b>{n['title']}</b><br/>{luogo}<br/><a href='{n['url']}' target='_blank' rel='noopener'>🔗 Fonte</a>",
                         "lat": lat, "lon": lon
                     })
                 matched = True
                 break
-        if not matched:  # fallback
+        if not matched:
             markers.append({
                 "code": "",
-                "title": f"<b>{n['title']}</b><br/><i>(Località non specificata)</i><br/><a href='{n['url']}' target='_blank'>🔗 Fonte</a>",
+                "title": f"<b>{n['title']}</b><br/><i>(Località non specificata)</i><br/><a href='{n['url']}' target='_blank' rel='noopener'>🔗 Fonte</a>",
                 "lat": 20.0, "lon": 0.0
             })
     return markers
@@ -202,12 +208,15 @@ def main():
             "markers": markers,
         }
 
+    # Archivio JSON
     with open(ARCHIVE_PATH, "w", encoding="utf8") as f:
         json.dump(all_exports, f, indent=2, ensure_ascii=False)
 
+    # Logo SVG in root (URL: /genesi_logo.svg)
     with open("genesi_logo.svg", "w", encoding="utf8") as f:
         f.write(LOGO_SVG)
 
+    # ---- HTML index ----
     archive_json = json.dumps(all_exports, ensure_ascii=False)
     buttons_html = "".join([f"<button class='lang' onclick=\"loadLang('{l}')\">{name}</button>" for l, name in LANGS.items()])
 
@@ -219,12 +228,15 @@ def main():
 <title>genesi.vrabo.it – Storia Umana</title>
 <meta name="description" content="Ogni giorno un nuovo capitolo della storia umana, multilingua."/>
 <link rel="canonical" href="{SITE_URL}"/>
-<link rel="icon" href="favicon.ico" type="image/x-icon"/>
+<link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+
+<!-- Social -->
 <meta property="og:title" content="GENESI – Storia Umana"/>
 <meta property="og:description" content="Capitoli evolutivi aggiornati quotidianamente."/>
 <meta property="og:image" content="{SITE_URL}/genesi_logo.svg"/>
 <meta property="og:url" content="{SITE_URL}"/>
 <meta name="twitter:card" content="summary_large_image"/>
+
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
 <style>
 :root {{ --azure:#007FFF; --dark:#0c0c0f; --light:#fff; --card:rgba(255,255,255,0.06); }}
@@ -248,38 +260,46 @@ footer {{ max-width:1100px; margin:2rem auto; color:#bbb; padding:0 1rem 2rem }}
 </head>
 <body>
 <header>
-  <img src="genesi_logo.svg" alt="GENESI Logo" />
+  <img src="/genesi_logo.svg" alt="GENESI Logo" />
   <h1>genesi.vrabo.it</h1>
 </header>
+
 <main>
   <div class="lang-switch">{buttons_html}</div>
   <div id="chapter" class="chapter"></div>
+
   <h2 class="section">Mappa delle Origini</h2>
   <div id="map"></div>
+
   <div class="ads">
     <iframe title="ads" src="about:blank" width="728" height="90" style="border:none;max-width:100%"></iframe>
   </div>
 </main>
+
 <footer>
   <p>&copy; {today} genesi.vrabo.it — Tutti i diritti riservati</p>
 </footer>
+
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 let archive = {archive_json};
+
 const map = L.map('map').setView([20,0], 2);
-L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
+L.tileLayer('https://{{{{s}}}}.tile.openstreetmap.org/{{{{z}}}}/{{{{x}}}}/{{{{y}}}}.png', {{
   attribution: '&copy; OpenStreetMap contributors'
 }}).addTo(map);
+
 function clearMarkers() {{
   map.eachLayer(function(layer) {{
     if (layer instanceof L.Marker) map.removeLayer(layer);
   }});
 }}
+
 function loadMarkers(markers) {{
   if (!markers || !markers.length) return;
   const group = [];
   markers.forEach(m => {{
-    const mk = L.marker([m.lat, m.lon]).addTo(map).bindPopup(m.title || "", {{ maxWidth: 300 }});
+    const mk = L.marker([m.lat, m.lon]).addTo(map).bindPopup(m.title || "", {{ maxWidth: 320 }});
     group.push(mk);
   }});
   try {{
@@ -287,16 +307,19 @@ function loadMarkers(markers) {{
     map.fitBounds(g.getBounds().pad(0.25));
   }} catch(e) {{}}
 }}
+
 function loadLang(lang) {{
   const data = archive[lang] || archive["it"];
   document.getElementById("chapter").innerHTML = data.global;
   clearMarkers();
   loadMarkers(data.markers);
 }}
+
 loadLang("it");
 </script>
 </body>
 </html>"""
+
     with open(OUTPUT_INDEX, "w", encoding="utf8") as f:
         f.write(html)
 
@@ -304,7 +327,7 @@ loadLang("it");
     with open(".vercelignore", "w", encoding="utf8") as f:
         f.write("venv/\n__pycache__/\n*.db\n*.sqlite\n*.log\n*.pyc\n")
 
-    # Workflow GitHub Action
+    # Workflow GitHub Action (senza emoji per Windows)
     os.makedirs(".github/workflows", exist_ok=True)
     workflow = """name: Daily Genesi Update
 on:
@@ -325,13 +348,13 @@ jobs:
           git config --global user.name "GenesiBot"
           git config --global user.email "bot@vrabo.it"
           git add -A
-          git commit -m "🔄 Auto-update $(date +'%Y-%m-%d')" || echo "No changes"
+          git commit -m "Auto-update $(date +'%Y-%m-%d')" || echo "No changes"
           git push
 """
     with open(".github/workflows/daily.yml", "w", encoding="utf8") as f:
         f.write(workflow)
 
-    # Sitemap + Robots
+    # Sitemap + Robots (in root per semplicità)
     with open(SITEMAP, "w", encoding="utf8") as f:
         f.write(f"""<?xml version="1.0" encoding="UTF-8"?>
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
@@ -340,8 +363,21 @@ jobs:
     with open(ROBOTS, "w", encoding="utf8") as f:
         f.write(f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
 
+    # vercel.json con rewrite che NON tocca i file con punto
+    vercel_conf = {
+        "cleanUrls": True,
+        "rewrites": [
+            {
+                "source": "/((?!api|.*\\..*).*)",
+                "destination": "/index.html"
+            }
+        ]
+    }
+    with open(VERCEL_JSON, "w", encoding="utf8") as f:
+        f.write(json.dumps(vercel_conf, indent=2))
+
     conn.close()
-    print("✅ GENESI FULL POWER: index.html + logo glow (SVG only) + mappa dinamica con link + workflow daily!")
+    print("✅ GENESI FULL POWER: index.html + /genesi_logo.svg + mappa dinamica + workflow daily + vercel rewrites OK!")
 
 if __name__ == "__main__":
     main()
