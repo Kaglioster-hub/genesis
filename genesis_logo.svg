@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 500 500" width="500" height="500">
+<circle cx="250" cy="250" r="230" fill="#007FFF"/>
+<circle cx="250" cy="250" r="170" fill="none" stroke="#FFFFFF" stroke-width="8" opacity="0.8"/>
+<circle cx="250" cy="250" r="110" fill="none" stroke="#FFFFFF" stroke-width="6" opacity="0.6"/>
+<circle cx="250" cy="250" r="50" fill="none" stroke="#FFFFFF" stroke-width="4" opacity="0.4"/>
+<path d="M250 20 A230 230 0 0 1 480 250" stroke="#FFFFFF" stroke-width="14" fill="none" stroke-linecap="round"/>
+<circle cx="250" cy="250" r="18" fill="#FFFFFF"/>
+<text x="50%" y="475" text-anchor="middle" font-family="Orbitron, sans-serif"
+ font-size="52" font-weight="700" fill="#FFFFFF" letter-spacing="8">GENESIS</text>
+</svg>
