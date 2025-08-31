@@ -135,7 +135,6 @@ def fetch_latest_news(max_items=6, lang="it"):
     return items
 
 def detect_markers_from_news(news_list, lang="it"):
-    """Genera marker con titolo+link, geolocalizzati o fallback."""
     markers, seen = [], set()
     for n in news_list:
         text = f"{n.get('raw_title','')} {n.get('raw_summary','')} {n.get('title','')} {n.get('summary','')}".lower()
@@ -223,7 +222,7 @@ def main():
 <link rel="icon" href="favicon.ico" type="image/x-icon"/>
 <meta property="og:title" content="GENESI – Storia Umana"/>
 <meta property="og:description" content="Capitoli evolutivi aggiornati quotidianamente."/>
-<meta property="og:image" content="{SITE_URL}/genesi_logo.png"/>
+<meta property="og:image" content="{SITE_URL}/genesi_logo.svg"/>
 <meta property="og:url" content="{SITE_URL}"/>
 <meta name="twitter:card" content="summary_large_image"/>
 <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css"/>
@@ -342,7 +341,7 @@ jobs:
         f.write(f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
 
     conn.close()
-    print("✅ GENESI FULL POWER: index.html + logo glow + mappa dinamica con link + workflow daily!")
+    print("✅ GENESI FULL POWER: index.html + logo glow (SVG only) + mappa dinamica con link + workflow daily!")
 
 if __name__ == "__main__":
     main()
