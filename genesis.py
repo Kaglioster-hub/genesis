@@ -5,16 +5,14 @@ import feedparser
 # ==========================
 # Traduzione automatica (robusta)
 # ==========================
-USE_TRANSLATION = True  # metti False per disattivare in blocco
+USE_TRANSLATION = True
 
 try:
     from deep_translator import GoogleTranslator
-    _gt = GoogleTranslator(source="auto", target="it")
     def traduci_testo(txt, lang="it"):
         if not USE_TRANSLATION or not txt:
             return txt
         try:
-            # istanziazione per target dinamico
             return GoogleTranslator(source="auto", target=lang).translate(txt)
         except Exception:
             return txt
@@ -71,6 +69,9 @@ REGION_HINTS = {
     r"\b(america(s)?|and(es|ini)|amazon(as)?)\b":           ("Americhe", 0.0, -60.0),
 }
 
+# ==========================
+# LOGO (solo SVG)
+# ==========================
 LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" width="600" height="600">
   <defs>
     <radialGradient id="bg" cx="50%" cy="50%" r="50%">
@@ -140,7 +141,6 @@ def fetch_latest_news(max_items=6, lang="it"):
     return items
 
 def detect_markers_from_news(news_list, lang="it"):
-    """Marker con titolo+link; geolocalizzati se matchati, altrimenti fallback su [20,0]."""
     markers, seen = [], set()
     for n in news_list:
         text = f"{n.get('raw_title','')} {n.get('raw_summary','')} {n.get('title','')} {n.get('summary','')}".lower()
@@ -212,7 +212,7 @@ def main():
     with open(ARCHIVE_PATH, "w", encoding="utf8") as f:
         json.dump(all_exports, f, indent=2, ensure_ascii=False)
 
-    # Logo SVG in root (URL: /genesi_logo.svg)
+    # Logo SVG in root
     with open("genesi_logo.svg", "w", encoding="utf8") as f:
         f.write(LOGO_SVG)
 
@@ -230,7 +230,6 @@ def main():
 <link rel="canonical" href="{SITE_URL}"/>
 <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
 
-<!-- Social -->
 <meta property="og:title" content="GENESI – Storia Umana"/>
 <meta property="og:description" content="Capitoli evolutivi aggiornati quotidianamente."/>
 <meta property="og:image" content="{SITE_URL}/genesi_logo.svg"/>
@@ -267,10 +266,8 @@ footer {{ max-width:1100px; margin:2rem auto; color:#bbb; padding:0 1rem 2rem }}
 <main>
   <div class="lang-switch">{buttons_html}</div>
   <div id="chapter" class="chapter"></div>
-
   <h2 class="section">Mappa delle Origini</h2>
   <div id="map"></div>
-
   <div class="ads">
     <iframe title="ads" src="about:blank" width="728" height="90" style="border:none;max-width:100%"></iframe>
   </div>
@@ -283,18 +280,15 @@ footer {{ max-width:1100px; margin:2rem auto; color:#bbb; padding:0 1rem 2rem }}
 <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 <script>
 let archive = {archive_json};
-
 const map = L.map('map').setView([20,0], 2);
 L.tileLayer('https://{{{{s}}}}.tile.openstreetmap.org/{{{{z}}}}/{{{{x}}}}/{{{{y}}}}.png', {{
   attribution: '&copy; OpenStreetMap contributors'
 }}).addTo(map);
-
 function clearMarkers() {{
   map.eachLayer(function(layer) {{
     if (layer instanceof L.Marker) map.removeLayer(layer);
   }});
 }}
-
 function loadMarkers(markers) {{
   if (!markers || !markers.length) return;
   const group = [];
@@ -307,63 +301,20 @@ function loadMarkers(markers) {{
     map.fitBounds(g.getBounds().pad(0.25));
   }} catch(e) {{}}
 }}
-
 function loadLang(lang) {{
   const data = archive[lang] || archive["it"];
   document.getElementById("chapter").innerHTML = data.global;
   clearMarkers();
   loadMarkers(data.markers);
 }}
-
 loadLang("it");
 </script>
 </body>
 </html>"""
-
     with open(OUTPUT_INDEX, "w", encoding="utf8") as f:
         f.write(html)
 
-    # .vercelignore
-    with open(".vercelignore", "w", encoding="utf8") as f:
-        f.write("venv/\n__pycache__/\n*.db\n*.sqlite\n*.log\n*.pyc\n")
-
-    # Workflow GitHub Action (senza emoji per Windows)
-    os.makedirs(".github/workflows", exist_ok=True)
-    workflow = """name: Daily Genesi Update
-on:
-  schedule:
-    - cron: "0 6 * * *"
-  workflow_dispatch:
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-      - run: pip install feedparser deep-translator
-      - run: python genesi.py
-      - run: |
-          git config --global user.name "GenesiBot"
-          git config --global user.email "bot@vrabo.it"
-          git add -A
-          git commit -m "Auto-update $(date +'%Y-%m-%d')" || echo "No changes"
-          git push
-"""
-    with open(".github/workflows/daily.yml", "w", encoding="utf8") as f:
-        f.write(workflow)
-
-    # Sitemap + Robots (in root per semplicità)
-    with open(SITEMAP, "w", encoding="utf8") as f:
-        f.write(f"""<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url><loc>{SITE_URL}/</loc><lastmod>{today}</lastmod><changefreq>daily</changefreq></url>
-</urlset>""")
-    with open(ROBOTS, "w", encoding="utf8") as f:
-        f.write(f"User-agent: *\nAllow: /\nSitemap: {SITE_URL}/sitemap.xml\n")
-
-    # vercel.json con rewrite che NON tocca i file con punto
+    # vercel.json
     vercel_conf = {
         "cleanUrls": True,
         "rewrites": [
@@ -377,7 +328,7 @@ jobs:
         f.write(json.dumps(vercel_conf, indent=2))
 
     conn.close()
-    print("✅ GENESI FULL POWER: index.html + /genesi_logo.svg + mappa dinamica + workflow daily + vercel rewrites OK!")
+    print("✅ GENESI FULL POWER: index.html + genesi_logo.svg unico + mappa dinamica + workflow daily + rewrites OK!")
 
 if __name__ == "__main__":
     main()
