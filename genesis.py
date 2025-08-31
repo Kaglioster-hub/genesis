@@ -5,7 +5,7 @@ import feedparser
 # ==========================
 # Traduzione automatica (robusta)
 # ==========================
-USE_TRANSLATION = True
+USE_TRANSLATION = False
 
 try:
     from deep_translator import GoogleTranslator
