@@ -95,7 +95,7 @@ LOGO_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" widt
 </svg>"""
 
 # ==========================
-# DB
+# DB helpers
 # ==========================
 def init_db(conn):
     c = conn.cursor()
@@ -108,6 +108,16 @@ def insert_global(conn, date_str, lang, title, content, sources_json):
     conn.execute("INSERT OR REPLACE INTO chapters_global VALUES (?,?,?,?,?)",
                  (date_str, lang, title, content, sources_json))
     conn.commit()
+
+# Ensure DB and archive exist
+if not os.path.exists(DB_PATH):
+    conn = sqlite3.connect(DB_PATH)
+    init_db(conn)
+    conn.close()
+
+if not os.path.exists(ARCHIVE_PATH):
+    with open(ARCHIVE_PATH, "w", encoding="utf8") as f:
+        json.dump({}, f)
 
 # ==========================
 # Feed & geotagging
@@ -258,6 +268,7 @@ footer {{ max-width:1100px; margin:2rem auto; color:#bbb; padding:0 1rem 2rem }}
 <header>
   <img src="/genesi_logo.svg" alt="GENESI Logo" />
   <h1>genesi.vrabo.it</h1>
+  <p><small>Aggiornato il {today}</small></p>
 </header>
 
 <main>
@@ -284,11 +295,10 @@ const map = L.map('map', {{
   worldCopyJump: true
 }});
 
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{
   attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',
   maxZoom: 19
-}).addTo(map);
-
+}}).addTo(map);
 
 window.addEventListener("load", () => {{
   setTimeout(() => {{
