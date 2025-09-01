@@ -25,7 +25,7 @@ jobs:
           fi
 
       - name: Run Genesis script
-        run: python genesis.py   # ✅ percorso corretto
+        run: python genesis.py   # ✅ percorso corretto e indentazione giusta
 
       - name: Commit changes
         run: |
