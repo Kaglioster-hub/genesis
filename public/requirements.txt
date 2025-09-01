@@ -1,3 +1,7 @@
 feedparser
 deep-translator
 pillow
+requests
+beautifulsoup4
+lxml
+matplotlib
