@@ -3,7 +3,7 @@ name: Genesis Daily Update
 on:
   schedule:
     - cron: "15 6 * * *"   # ogni giorno alle 06:15 UTC (08:15 ora Italia)
-  workflow_dispatch:       # opzionale: avvio manuale da GitHub
+  workflow_dispatch:       # avvio manuale da GitHub
 
 jobs:
   build:
@@ -24,8 +24,11 @@ jobs:
             pip install -r public/requirements.txt
           fi
 
+      - name: Debug files
+        run: ls -lah
+
       - name: Run Genesis script
-        run: python genesis.py   # ✅ percorso corretto e indentazione giusta
+        run: python genesis.py   # ✅ usa quello che hai nella root
 
       - name: Commit changes
         run: |
