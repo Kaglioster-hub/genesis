@@ -1,5 +1,6 @@
 import os, sqlite3, json, re
-from datetime import date
+from datetime import datetime
+from zoneinfo import ZoneInfo
 import feedparser
 
 # ==========================
@@ -176,11 +177,15 @@ def detect_markers_from_news(news_list, lang="it"):
 # MAIN
 # ==========================
 def main():
-    today = date.today().isoformat()
+    # Data/ora italiana per la testata e per forzare il commit quotidiano
+    now_it   = datetime.now(ZoneInfo("Europe/Rome"))
+    today    = now_it.date().isoformat()
+    build_ts = now_it.isoformat(timespec="seconds")
+
     conn = sqlite3.connect(DB_PATH)
     init_db(conn)
 
-    all_exports = {}
+    all_exports = {"build_ts": build_ts}
 
     for lang, langname in LANGS.items():
         news = fetch_latest_news(lang=lang)
@@ -212,15 +217,24 @@ def main():
             "lang": lang,
             "global": global_text,
             "markers": markers,
+            "sources": sources,
         }
 
-    # Archivio JSON
+    # Archivio JSON (includo il build_ts per visibilità)
     with open(ARCHIVE_PATH, "w", encoding="utf8") as f:
         json.dump(all_exports, f, indent=2, ensure_ascii=False)
 
     # Logo SVG in root
     with open("genesi_logo.svg", "w", encoding="utf8") as f:
         f.write(LOGO_SVG)
+
+    # Favicon: copia dalla cartella public alla root (evita 404)
+    try:
+        if os.path.exists("public/favicon.ico"):
+            with open("public/favicon.ico", "rb") as src, open("favicon.ico", "wb") as dst:
+                dst.write(src.read())
+    except Exception as _:
+        pass
 
     # ---- HTML index ----
     archive_json = json.dumps(all_exports, ensure_ascii=False)
@@ -235,6 +249,7 @@ def main():
 <meta name="description" content="Ogni giorno un nuovo capitolo della storia umana, multilingua."/>
 <link rel="canonical" href="{SITE_URL}"/>
 <link rel="icon" href="/favicon.ico" type="image/x-icon"/>
+<meta name="generator" content="genesi-bot {build_ts}"/>
 
 <meta property="og:title" content="GENESI – Storia Umana"/>
 <meta property="og:description" content="Capitoli evolutivi aggiornati quotidianamente."/>
@@ -335,8 +350,10 @@ loadLang("it");
 </body>
 </html>"""
 
+    # Scrittura file + timestamp invisibile per forzare il commit quotidiano
     with open(OUTPUT_INDEX, "w", encoding="utf8") as f:
         f.write(html)
+        f.write(f"\n<!-- build {build_ts} -->\n")
 
     # vercel.json
     vercel_conf = {
@@ -349,7 +366,7 @@ loadLang("it");
         f.write(json.dumps(vercel_conf, indent=2))
 
     conn.close()
-    print("✅ GENESI SUPREME: index.html + logo + mappa fixata + SEO/OG + rewrites OK!")
+    print(f"✅ GENESI SUPREME: index.html + logo + mappa OK | build {build_ts}")
 
 if __name__ == "__main__":
     main()
